@@ -3,6 +3,8 @@ import asyncio
 import aioconsole
 import aiohttp
 from .DiscordGateway import discordgateway
+from .VoiceWebs import voicewebsocket
+
 
 
 class commands:
@@ -64,7 +66,8 @@ class commands:
                 j = await resp.json()
                 await aioconsole.aprint(f"{j}")
         endpoint, wstoken, sessionid = await self.dg.connect_vc(self.channel, self.guild)
-        # await self.dg.connect_stream(self.channel, self.guild)
+        await self.dg.connect_stream(self.channel, self.guild)
+        
         # await asyncio.sleep(2)
-        await aioconsole.aprint("First")
-        await self.dg.connect_stream2(self.channel, self.guild)
+        # await aioconsole.aprint("First")
+        # await self.dg.connect_stream2(self.channel, self.guild)
