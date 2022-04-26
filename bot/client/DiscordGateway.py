@@ -34,7 +34,7 @@ class discordgateway:
         await self.send_json(payload)
 
     async def heartbeat(self, interval):
-        await aioconsole.aprint("Hearbeat has began!")
+        await aioconsole.aprint(f"Hearbeat loop has began with the interval of {interval} seconds!")
         heartbeatJSON = {
             "op": 1,
             "d": "null"
@@ -42,6 +42,14 @@ class discordgateway:
         while True:
             await asyncio.sleep(interval)
             await self.send_json(heartbeatJSON)
+            await aioconsole.aprint("Sent heartbeat!")
+
+    async def simple_connect(self):
+        await self.connect()
+        interval = await self.recv_json()
+        await self.identify()
+        asyncio.create_task(self.heartbeat(interval['d']['heartbeat_interval'] / 1000))
+
     
 
 
