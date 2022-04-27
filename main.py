@@ -3,7 +3,7 @@ from bot import discordgateway
 from bot import console
 import asyncio
 import aioconsole
-from bot import commands
+from bot import handler
 
 with open('./data/config.json') as f:
     config = json.load(f)
@@ -15,7 +15,7 @@ async def main():
     await console().menu() # funni ascii
     dg = discordgateway(token)
     await dg.simple_connect()
-    await commands(dg).on_msg()
+    await handler(dg).on_msg()
 
 
 asyncio.run(main())
