@@ -11,7 +11,7 @@ class discordgateway:
         self.token = token
         self.id = None
         self.is_connected = False
-
+        self.mode = "xsalsa20_poly1305"
    
         
         
@@ -187,7 +187,7 @@ class discordgateway:
                 "data": {
                     "address": self.address,
                     "port": self.port,
-                    "mode": "xsalsa20_poly1305"
+                    "mode": self.mode
                 }
             }
         }
@@ -196,7 +196,7 @@ class discordgateway:
             event = await self.vc_recv_json()
             try:
                 if event['op'] == 4:
-                    self.secret = event['d']['secret_key']
+                    self.secret_key = event['d']['secret_key']
                     break
             except:
                 continue
