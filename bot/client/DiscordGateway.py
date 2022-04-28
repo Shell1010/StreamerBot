@@ -3,11 +3,17 @@ import websockets
 import aioconsole
 import json
 import time
+import socket
+import ctypes
 
 class discordgateway:
     def __init__(self, token: str):
         self.token = token
         self.id = None
+        self.is_connected = False
+
+   
+        
         
     async def recv_json(self):
         item = await self.ws.recv()
@@ -60,10 +66,10 @@ class discordgateway:
         await self.identify()
         asyncio.create_task(self.heartbeat(interval['d']['heartbeat_interval'] / 1000))
         event = await self.recv_json()
-        while True:
-            if event["t"] == "READY":
-                self.id = event["d"]["user"]["id"]
-            break
+        if event["t"] == "READY":
+            self.id = event["d"]["user"]["id"]
+                
+            
 
     async def connect_stream(self, channel, guild=None):
         payload = {
@@ -113,7 +119,19 @@ class discordgateway:
                 continue
         self.vc_ws = await websockets.connect(f"wss://{self.webs_endpoint[:-4]}/?v=6")
 
-
+    async def leave_vc(self):
+        payload = {
+            "op": 4,
+            "d": {
+                "guild_id": None,
+                "channel_id": None,
+                "self_mute": False,
+                "self_deaf": False,
+                "self_video": False,
+            }
+        }
+        await self.send_json(payload)
+        self.is_connected = False
 
 
     async def vc_identify(self, server):
@@ -149,6 +167,9 @@ class discordgateway:
         await aioconsole.aprint(f"Voice websocket heartbeat loop has begain with the interval of {interval} seconds")
 
         while True:
+            if not self.is_connected:
+                await aioconsole.aprint("No longer connected!")
+                break
             payload = {
                 "op": 3,
                 "d": int(time.time())
@@ -182,12 +203,18 @@ class discordgateway:
 
 
 
+
+
+
     async def vc_simple_connect(self, channel, guild=None):
         await self.connect_vc(channel, guild)
         interval = await self.vc_identify(channel if guild is None else guild)
+        self.is_connected = True
         asyncio.create_task(self.vc_heartbeat(interval/1000))
         await self.udp_connect()
         await self.connect_stream(channel, guild)
+
+    
 
     
 
