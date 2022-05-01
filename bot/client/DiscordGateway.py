@@ -3,7 +3,9 @@ import websockets
 import aioconsole
 import json
 import time
+import struct
 import socket
+
 import ctypes
 
 class discordgateway:
@@ -12,7 +14,8 @@ class discordgateway:
         self.id = None
         self.is_connected = False
         self.mode = "xsalsa20_poly1305"
-   
+        self.socket: socket.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.socket.setblocking(False)
         
         
     async def recv_json(self):
@@ -160,6 +163,7 @@ class discordgateway:
                 continue
         self.address = data['ip']
         self.port = data['port']
+        self.ssrc = data['ssrc']
 
         return interval
 
@@ -185,8 +189,8 @@ class discordgateway:
             "d": {
                 "protocol": "udp",
                 "data": {
-                    "address": self.address,
-                    "port": self.port,
+                    "address": self.ip,
+                    "port": self.me_port,
                     "mode": self.mode
                 }
             }
@@ -202,8 +206,25 @@ class discordgateway:
                 continue
 
 
+    async def ip_discovery(self):
 
-
+        packet = bytearray(70)
+        struct.pack_into('>H', packet, 0, 1)  # 1 = Send
+        struct.pack_into('>H', packet, 2, 70)  # 70 = Length
+        struct.pack_into('>I', packet, 4, self.ssrc)
+        self.socket.sendto(packet, (self.address, self.port))
+        while True:
+            try:
+                data = self.socket.recv(70)
+                break
+            except:
+                continue
+        # await aioconsole.aprint(data)
+        ip_start = 4
+        ip_end = data.index(0, ip_start)
+        self.ip = data[ip_start:ip_end].decode("ascii")
+        self.me_port = struct.unpack_from(">H", data, len(data) - 2)[0]
+        # await aioconsole.aprint(f"{self.ip}:{self.port}")
 
 
     async def vc_simple_connect(self, channel, guild=None):
@@ -211,8 +232,10 @@ class discordgateway:
         interval = await self.vc_identify(channel if guild is None else guild)
         self.is_connected = True
         asyncio.create_task(self.vc_heartbeat(interval/1000))
+        await self.ip_discovery()
+        
         await self.udp_connect()
-        await self.connect_stream(channel, guild)
+        # await self.connect_stream(channel, guild)
 
     
 

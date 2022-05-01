@@ -24,9 +24,13 @@ DELAY = FRAME_LENGTH / 1000.0
 
 class voice_client:
     def __init__(self, dg: discordgateway):
-        self.socket = None
         self.sequence = 0
         self.dg = dg
+        self.timestamp = 0
+        self.socket: socket.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+        self.socket.setblocking(False)
+        self.endpoint, _, _ = self.dg.webs_endpoint.rpartition(":")
+
 
     async def play_audio(self, url):
         # if not self.dg.is_connected:
@@ -50,19 +54,18 @@ class voice_client:
 
         encoder = opuslib.Encoder(SAMPLING_RATE, CHANNELS, opuslib.APPLICATION_AUDIO)
         try:
-            stuf = encoder.encode(data, SAMPLES_PER_FRAME)
+            encoded = encoder.encode(data, SAMPLES_PER_FRAME)
             # await aioconsole.aprint(stuf)
         except Exception as e:
             await aioconsole.aprint(e)
         
-        self.socket: socket.socket = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
-        self.socket.setblocking(False)
-        packet = self.get_voice_packet(data)
+        packet = self.get_voice_packet(encoded)
         self.socket.sendto(packet, (self.dg.address, self.dg.port))
+        await aioconsole.aprint("Starting audio...")
 
         self.checked_add('timestamp', SAMPLES_PER_FRAME, 4294967295)
 
-        
+
     def get_voice_packet(self, data):
         header = bytearray(12)
 
@@ -70,25 +73,27 @@ class voice_client:
         header[0] = 0x80
         header[1] = 0x78
         struct.pack_into('>H', header, 2, self.sequence)
-        struct.pack_into('>I', header, 4, 0)
-        struct.pack_into('>I', header, 8, 0)
+        struct.pack_into('>I', header, 4, self.timestamp)
+        struct.pack_into('>I', header, 8, self.dg.ssrc)
 
         encrypt_packet = getattr(self, "_encrypt_"+ self.dg.mode)
         return encrypt_packet(header, data)
 
-    def _encrypt_xsalsa20_poly1305(self, header: bytes, data) -> bytes:
+    def _encrypt_xsalsa20_poly1305(self, header: bytes, data):
         box = nacl.secret.SecretBox(bytes(self.dg.secret_key))
         nonce = bytearray(24)
         nonce[:12] = header
 
         return header + box.encrypt(bytes(data), bytes(nonce)).ciphertext
 
-    def checked_add(self, attr: str, value: int, limit: int) -> None:
+    def checked_add(self, attr: str, value: int, limit: int):
         val = getattr(self, attr)
         if val + value > limit:
             setattr(self, attr, 0)
         else:
             setattr(self, attr, val + value)
+
+
 
 
     

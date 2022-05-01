@@ -83,9 +83,9 @@ class handler:
 
     async def play(self, url):
         msg = "```ansi\n[1;31mI am not connected to a voice channel!```"
-        # if not self.dg.is_connected:
-        #     await self.send_msg(msg)
-        #     return
+        if not self.dg.is_connected:
+            await self.send_msg(msg)
+            return
         msg = "```ansi\n[1;31mStarting audio!```"
         await self.send_msg(msg)
         await self.voice(self.dg).play_audio(url)
